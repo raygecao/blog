@@ -1,0 +1,49 @@
+name: github pages
+
+on:
+  push:
+    branches:
+      - master  # Set a branch to deploy
+  pull_request:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true  # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: 'latest'
+          # extended: true
+
+      - name: Build
+        run: hugo --minify
+
+      # upload algolia
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+        node-version: '12.x'
+      - name: Install automic-algolia
+        run: |
+        npm install atomic-algolia
+        npm run algolia
+        env:
+        ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+        ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
+        ALGOLIA_INDEX_NAME: ${{ secrets.ALGOLIA_INDEX_NAME }}
+        ALGOLIA_INDEX_FILE: "./public/algolia.json"
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/master'
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: ./public
+          external_repository: raygecao/raygecao.github.io
+          publish_branch: master

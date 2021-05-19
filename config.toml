@@ -1,4 +1,4 @@
-baseURL = "https://raygecao.github.io/" 
+baseURL = "https://raygecao.github.io/"
 # [en, zh-cn, fr, ...] 设置默认的语言
 defaultContentLanguage = "zh-cn"
 # 网站语言, 仅在这里 CN 大写
@@ -6,10 +6,14 @@ languageCode = "zh-CN"
 # 是否包括中日韩文字
 hasCJKLanguage = true
 # 网站标题
-title = "拾遗之徒"
+title = "拾遗之途"
 
 # 更改使用 Hugo 构建网站时使用的默认主题
 theme = "LoveIt"
+
+# whether to use emoji code
+# 是否使用 emoji 代码
+enableEmoji = true
 
 [params]
   # LoveIt 主题版本
@@ -44,9 +48,70 @@ theme = "LoveIt"
     title = ""
     weight = 3
 
+[params.footer]
+  enable = true
+  hugo = false
+  copyright = false
+
+
 # Hugo 解析文档的配置
 [markup]
   # 语法高亮设置 (https://gohugo.io/content-management/syntax-highlighting)
   [markup.highlight]
     # false 是必要的设置 (https://github.com/dillonzq/LoveIt/issues/158)
     noClasses = false
+
+[params.search]
+    enable = true
+    # 搜索引擎的类型 ("lunr", "algolia")
+    type = "algolia"
+    # 文章内容最长索引长度
+    contentLength = 4000
+    # 搜索框的占位提示语
+    placeholder = ""
+    # LoveIt 新增 | 0.2.1 最大结果数目
+    maxResultLength = 10
+    # LoveIt 新增 | 0.2.3 结果内容片段长度
+    snippetLength = 50
+    # LoveIt 新增 | 0.2.1 搜索结果中高亮部分的 HTML 标签
+    highlightTag = "em"
+    # LoveIt 新增 | 0.2.4 是否在搜索索引中使用基于 baseURL 的绝对路径
+    absoluteURL = false
+    [params.search.algolia]
+      index = "blog"
+      appID = "LX1FO3SR9Q"
+      searchKey = "e313cef40f53bf69fe7e593c2369a811"
+
+
+# Algolia search config
+[outputs]
+    home = ["HTML", "RSS", "Algolia"]
+
+[outputFormats.Algolia]
+  baseName = "algolia"
+  isPlainText = true
+  mediaType = "application/json"
+  notAlternative = true
+
+[params.algolia]
+  appId = "LX1FO3SR9Q"
+  indexName = "blog"
+  searchOnlyKey = "e313cef40f53bf69fe7e593c2369a811"
+
+ [params.page.comment]
+      enable = true
+      [params.page.comment.valine]
+        enable = true
+        appId = "9CFga5qIsIai65AeVF4i0mAH-gzGzoHsz"
+        appKey = "WgXjMQASwreiUmnY5dHWWx0Y"
+        placeholder = "发表评论..."
+        avatar = "mp"
+        meta= ""
+        pageSize = 10
+        lang = ""
+        visitor = true
+        recordIP = true
+        highlight = true
+        enableQQ = false
+        serverURLs = ""
+        emoji = ""
