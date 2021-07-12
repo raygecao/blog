@@ -12,7 +12,7 @@ resources:
 - name: "featured-image"
   src: "featured-image.png"
 
-tags: ["基础技术", "汇编", "shorthand"]
+tags: ["汇编"]
 categories: ["读书笔记"]
 
 
