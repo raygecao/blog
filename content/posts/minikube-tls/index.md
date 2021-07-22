@@ -33,7 +33,7 @@ license: ""
 {{< admonition failure "kubectl get pods">}}
 Unable to connect to the server: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "minikubeCA")
 {{< /admonition >}}
-在google没有找到合适的诱因及解决方案，因此打算自己探秘一番。有关TLS认证，x509证书以及openssl相关的命令我会记录在另一篇文章中，本文主要记录k8s的TLS双向认证的过程。
+在google没有找到合适的诱因及解决方案，因此打算自己探秘一番。有关TLS认证，在[这篇文章](../certification/#认证)有所提及，本文主要记录k8s的TLS双向认证的过程。
 
 ## 初识
 
