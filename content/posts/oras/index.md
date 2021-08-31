@@ -91,11 +91,46 @@ scenio--部署-->scenio
 
 {{< admonition tip >}}
 
-如果公网也是OCI registry，那么包的上传就有点类似于docker build，Dockerfile中没有发生变化时，对应产生的的layer都被cache住了，只有发生变化的部分需要build。上传也类似，只需要上传那些registry中缺少的layer blob即可，相当于增加了一层layer cache。
+如果公网也是OCI registry，那么包的上传就有点类似于docker push，当上传的layer在registry已存在时，对应的blob将不会重复上传。只有新增的layer blob会被上传，形式上类似于增加了一层layer cache。
 
 {{< /admonition >}}
 
+### 增量发布
 
+如果app bundle尺寸很大的话，会对交付效率带来较大的影响。
+
+- 下载应用包耗时较长。
+- 应用包占用的存储空间较大，并且应用包的跨网离线拷贝耗时较长。
+- 现场环境加载应用包并上传耗时较长。
+
+{{< admonition info "交付效率" >}}
+
+交付效率并没有一个官方的定义，我们这里姑且用**将一个应用从公司内网环境mirror到现场环境并成功部署所耗费的时间**来表述。增量发布只会影响mirror的效率，对部署效率不会有影响。
+
+{{< /admonition >}}
+
+初次交付时，这一问题无法避免，因为这时现场是个空的registry，需要mirror应用所需的所有artifacts。但是如果现场因新需求或bugfix等原因需要升级时，就不需要mirror另一个版本的全部content了。我们可以对这两个版本的bundle进行diff，生成一个补丁包来承载**新版本存在，但老版本不存在的blob集合**。如下图所示，app从v1.0.0升级到v1.0.1仅需要将`M2`与`L4`打到补丁包里即可，即其复用了就版本的`L1`与`L2`两个blob。
+
+{{< mermaid >}}
+graph TB;
+m1["app@v1.0.0<br>[M1]"]
+m2["app@v1.0.1<br>[M2]"]
+l1((L1))
+l2((L2))
+l3((L3))
+l4((L4))
+m1 --> l1
+m1 --> l2
+m1 --> l3
+m2 -.-> l1
+m2 -.-> l2
+
+subgraph patch-v1.0.1
+m2 -.-> l4
+end
+{{< /mermaid >}}
+
+增量发布对于小版本bugfix效率很高，改动越小，可以复用的layer越多，补丁包就越小，交付效率也就越高。
 
 ## 优化方案
 
@@ -171,8 +206,11 @@ dp --> data
 | `bundle` | 打包生成bundle，将一组制品关联起来 | 生成index索引artifact list，并将index及artifacts push到registry中特定的repository里 |
 | `pack`   | 将registry中的bundle保存到本地     | 以OCI image-layout的形式存储上述结构，相关的reference通过特殊的annotation记录在`index.json`中 |
 | `load`   | 从OCI image-layout中恢复bundle     | 加载OCI image-layout中的`index.json`并将关联的content及reference  push到registry |
+| `diff`  | 比较并产生target reference相对source reference的patch包 | 形式仍以OCI image-layout存在，只是`blobs`与`index.json`中存在的是两个ref之间的diff，而非全量的引用关系。一般来讲，diff产生的patch包，脱离了source reference是无法加载的 |
+| `patch` | 加载patch包 | Provider需要结合source reference与patch包构建完整target reference。另外patch包里记录source与target是一个不错的选择 |
 
-此外**cb**还wrap了**crane**的`manifest`，`catalog`及`list` 功能
+
+此外**cb**还wrap了**crane**的`manifest`，`catalog`及`list` 功能，另外结合了[go-graphviz](https://github.com/goccy/go-graphviz)实现了OCI layer可视化功能。
 
 ### 准备阶段
 
@@ -384,12 +422,72 @@ artifacts:
 对应的层序结构为：
 {{< image src="bundle-in-bundle.svg" caption="ubuntu-nginx-app:v1.0.0镜像的层序结构" width=600 height=400 >}}
 
-
 下载与加载均可以正常工作。
 
-### 其他功能
-- 基于layer粒度的bundle diff & patch。
-- Image树状结构可视化。
+### 补丁机制
+
+通过`ubuntu-nginx-app:v1.0.0`与`nginx-app:v1.0.0`两个bundle验证一下补丁机制的可用性。从上述层序结构图中可以看到后者是前者的一个子集，所以预想中patch包应包含**根节点及其左右两个子分支全部节点对应的blob，及ubuntu-nginx-app:v1.0.0和ubuntu:21.04两个reference**。
+
+```shell
+$ cb diff myregistry:5000/ubuntu-nginx-app:v1.0.0 myregistry:5000/nginx-app:v1.0.0 -o patch
+INFO[0000] get 6 diffs
+```
+
+```shell
+$ tree patch
+patch
+├── blobs
+│   └── sha256
+│       ├── 4451f5c7eb7af74432585f5ebfbeb01bbfc87ec4a74dc93703bdd89330559cd1
+│       ├── 52e0a43cc3025f0814510022bc2bc7f64135a9f4c93944ea0b82df344cc798c0
+│       ├── a2723fc64a92418869862e0a14d8e913641ba6e4bca78cf43d0db4be4c3c14fa
+│       ├── bf70ebd2c444440ae068c5ccea80e2087906a825ff1019a9f6d6cbb229e33481
+│       ├── ee951c00fa8985cc5f5b49f0d7fe5e456697198f24fed85142b4869083b7085b
+│       └── ef8ee90cfa9cfc7c218586dea9daa6a8d1d191b3c73be143f4120fe140dae3d0
+├── index.json
+├── ingest
+└── oci-layout
+
+3 directories, 8 files
+```
+
+```shell
+$ cat patch/index.json | jq .
+{
+  "schemaVersion": 2,
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "digest": "sha256:a2723fc64a92418869862e0a14d8e913641ba6e4bca78cf43d0db4be4c3c14fa",
+      "size": 669,
+      "annotations": {
+        "org.opencontainers.image.ref.name": "myregistry:5000/ubuntu-nginx-app:v1.0.0"
+      }
+    },
+    {
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "digest": "sha256:ef8ee90cfa9cfc7c218586dea9daa6a8d1d191b3c73be143f4120fe140dae3d0",
+      "size": 529,
+      "annotations": {
+        "org.opencontainers.image.ref.name": "myregistry:5000/ubuntu:21.04"
+      }
+    }
+  ]
+}
+```
+
+上述结果表明patch包中`blobs`及`index.json`中的引用均符合我们预期。
+
+清空registry并将`nginx-app:v1.0.0`load到registry中以验证应用patch的正确性。
+
+```shell
+$ cb load nginx-app
+INFO[0000] successfully push ref myregistry:5000/nginx-app:v1.0.0
+INFO[0001] successfully push ref myregistry:5000/nginx-chart:1.0.0
+$ cb patch patch
+INFO[0000] successfully push ref myregistry:5000/ubuntu:21.04
+INFO[0001] successfully push ref myregistry:5000/ubuntu-nginx-app:v1.0.0
+```
 
 ## 总结
 
