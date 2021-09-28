@@ -12,8 +12,8 @@ resources:
 - name: "featured-image"
   src: "featured-image.png"
 
-tags: []
-categories: []
+tags: ["container"]
+categories: ["探索与实战"]
 
 
 toc:
