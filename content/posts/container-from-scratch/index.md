@@ -172,13 +172,13 @@ lrwxrwxrwx 1 root root 0 Sep 24 05:57 uts -> 'uts:[4026536293]'
 # host
 $ ll /proc/self/ns
 total 0
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 cgroup -> cgroup:[4026531835]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 ipc -> ipc:[4026531839]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 mnt -> mnt:[4026531840]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 net -> net:[4026531969]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 pid -> pid:[4026531836]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 user -> user:[4026531837]
-lrwxrwxrwx 1 caolei caolei 0 Sep 24 13:57 uts -> uts:[4026531838]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 cgroup -> cgroup:[4026531835]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 ipc -> ipc:[4026531839]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 mnt -> mnt:[4026531840]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 net -> net:[4026531969]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 pid -> pid:[4026531836]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 user -> user:[4026531837]
+lrwxrwxrwx 1 ubuntu ubuntu 0 Sep 24 13:57 uts -> uts:[4026531838]
 ```
 
 由此可知，container内的mnt, pid, uts namespace与host的均不同。
@@ -204,7 +204,122 @@ bomb() {
 - `;`表示函数调用结束。
 - `:`运行此函数，触发fork bomb。
 
-## 扩展延伸
+## 功能扩展
+
+### 支持bind mount
+
+**Bind mount**将宿主目录映射到容器内，实现上比较简单，即在`chroot jail`前进行bind即可。示例代码如下：
+
+```go
+        // bind mount
+        testBindPath := filepath.Join(rootPath, "test")
+        os.Mkdir(testBindPath, 0755)
+        must(syscall.Mount(fmt.Sprintf("%s/test", homePath), testBindPath, "", syscall.MS_BIND, ""))
+```
+
+上例将家目录下的test目录bind mount到rootfs的test目录，从而在容器内部可见。
+
+### Cgroup资源扩展（Memory/CPU）
+
+在memory和cpu下创建两个cgroup，设置好限制内容，并将container pid加入到这两个cgroup中：
+
+```go
+        // Add cpu limitation for 0.3 core
+        cpu := filepath.Join(cgroups, "cpu")
+        os.Mkdir(filepath.Join(cpu, "liz"), 0755)
+        must(ioutil.WriteFile(filepath.Join(cpu, "liz/cpu.cfs_period_us"), []byte("100000"), 0700))
+        must(ioutil.WriteFile(filepath.Join(cpu, "liz/cpu.cfs_quota_us"), []byte("30000"), 0700))
+        must(ioutil.WriteFile(filepath.Join(cpu, "liz/notify_on_release"), []byte("1"), 0700))
+        must(ioutil.WriteFile(filepath.Join(cpu, "liz/cgroup.procs"), []byte(strconv.Itoa(os.Getpid())), 0700))
+
+        // Add memory limitation for 100M
+        mem := filepath.Join(cgroups, "memory")
+        os.Mkdir(filepath.Join(mem, "liz"), 0755)
+        must(ioutil.WriteFile(filepath.Join(mem, "liz/memory.limit_in_bytes"), []byte("100M"), 0700))
+        must(ioutil.WriteFile(filepath.Join(mem, "liz/memory.swappiness"), []byte("0"), 0700))
+        must(ioutil.WriteFile(filepath.Join(mem, "liz/notify_on_release"), []byte("1"), 0700))
+        must(ioutil.WriteFile(filepath.Join(mem, "liz/cgroup.procs"), []byte(strconv.Itoa(os.Getpid())), 0700))
+```
+
+上例分别对cpu与memory进行了限制：
+- **CPU**: 限制container最大使用核数为0.3
+- **Memory**: 限制物理内存上限为100M，且禁用swap，即内容使用超过了100M的话立刻触发OOM。
+
+验证cgroup隔离效果：
+
+```shell
+root@container:/# cat /proc/self/cgroup
+12:perf_event:/
+11:cpuset:/
+10:devices:/user.slice
+9:net_cls,net_prio:/
+8:pids:/liz
+7:blkio:/user.slice
+6:memory:/liz
+5:rdma:/
+4:hugetlb:/
+3:freezer:/
+2:cpu,cpuacct:/liz
+1:name=systemd:/user.slice/user-1000.slice/session-12.scope
+0::/user.slice/user-1000.slice/session-12.scope
+```
+
+使用`while : ; do : ; done` 压测cpu limitation：
+
+{{< image src="cpu-limit.png" caption="CPU使用被限制在0.3Core" width=1000 height=200 >}}
+
+验证memory limitation：
+
+{{< image src="mem-limit.png" caption="分配400M内存导致OOM" width=1000 height=200 >}}
+
+### 使用pivot_root系统调用替换chroot
+
+pivot_root与chroot作用类似，都是将rootfs jail到一个目录上。区别在于**前者更改此mount namespace下的所有进程的rootfs，后者仅更改当前进程的rootfs**。
+
+pivot_root核心思想是将root mount更改为**new_root**，并且原root mount会移到**put_old**中。其定义了一系列限制，列举如下：
+
+```text
+       -  new_root and put_old must be directories.
+
+       -  new_root and put_old must not be on the same mount as the current root.
+
+       -  put_old must be at or underneath new_root; that is, adding some nonnegative number of "/.." prefixes to the pathname
+          pointed to by put_old must yield the same directory as new_root.
+
+       -  new_root  must  be  a path to a mount point, but can't be "/".  A path that is not already a mount point can be con‐
+          verted into one by bind mounting the path onto itself.
+
+       -  The propagation type of the parent mount of new_root and the parent mount of the current root directory must not  be
+          MS_SHARED;  similarly, if put_old is an existing mount point, its propagation type must not be MS_SHARED.  These re‐
+          strictions ensure that pivot_root() never propagates any changes to another mount namespace.
+
+       -  The current root directory must be a mount point.
+```
+
+参考 [runc pivotRoot func](https://github.com/opencontainers/runc/blob/v1.0.2/libcontainer/rootfs_linux.go#L817) 对代码进行修改：
+
+```go
+        must(syscall.Mount(rootPath, rootPath, "bind", syscall.MS_BIND, ""))
+        // jail rootfs with pivot_root syscall
+        // ref: https://github.com/opencontainers/runc/blob/v1.0.2/libcontainer/rootfs_linux.go#L817
+        putOldPath := filepath.Join(rootPath, "put_old")
+        os.Mkdir(putOldPath, 0755)
+        must(syscall.PivotRoot(rootPath, putOldPath))
+        // lazy unmount
+        must(syscall.Unmount("/put_old", syscall.MNT_DETACH))
+        if err := os.Remove("/put_old"); err != nil{
+                panic(err)
+        }
+        //must(syscall.Chroot("fmt.Sprintf("%s/ubuntufs", homePath))
+        must(os.Chdir("/"))
+```
+- 为满足第二条限制，`new_root`以bind mount形式脱离current root filesystem。
+- 由于存在process使用原root mount下的文件，因此无法直接unmount掉`put_old`。这里使用**lazy unmount**（通过**syscall.MNT_DETACH** flag）的方式卸载掉。Lazy unmount使新的进程看不到此挂载点（隐藏掉），并且当使用此mount的进程全部退出后将其真正卸载掉。
+
+{{< admonition note >}}
+**上述扩展的完整代码参考[这里](https://github.com/raygecao/containers-from-scratch/pull/1/files)。**
+{{< /admonition >}}
+## 知识延伸
 
 为探究`Line:34` Unshareflags对挂载的影响，我们了解一下挂载传播。
 
@@ -228,7 +343,7 @@ Mount namespace有时会因提供太强的隔离性导致便捷性降低的问�
 
 有了这个概念，我们验证一下这个`Unshareflag`加与不加的区别：
 
-添加`Unshareflags`
+添加`Unshareflags`：
 
 ```shell
 # 容器中
@@ -237,7 +352,7 @@ root@container:/# cat /proc/self/mountinfo
 4223 4751 0:642 / /mytemp rw,relatime - tmpfs thing rw
 ```
 
-未添加`Unshareflags`
+未添加`Unshareflags`：
 
 ```shell
 # 容器中
