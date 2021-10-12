@@ -116,7 +116,7 @@ func must(err error) {
 
 - run函数中主要有两个工作：
   - **Fork出子进程并调用child函数**：`/proc/self/exe` 表明当前的程序，即fork出一份子进程执行当前程序的child命令。
-  - **设置Clone隔离属性**：`Cloneflags`通过设置`syscall.CLONE_NEWUTS`,`syscall.CLONE_NEWPID`,`syscall.CLONE_NEWNS`分别隔离了uts, pid及mount namespace。`Unshareflags`设置了`syscall.CLONE_NEWNS`用以忽略**挂载传播**。
+  - **设置Clone隔离属性**：`Cloneflags`通过设置`syscall.CLONE_NEWUTS`,`syscall.CLONE_NEWPID`,`syscall.CLONE_NEWNS`分别隔离了uts, pid及mount namespace。`Unshareflags`设置了`syscall.CLONE_NEWNS`用以禁用**挂载传播**。
 - child函数中主要做了四件事：
   - **为子进程设置cgroup**，设置当前cgroup总的进程数上限为20。
   - **更新子进程的hostname**，用以验证uts namespace隔离。
@@ -127,9 +127,9 @@ func must(err error) {
 
 {{< youtube MHv6cWjvQjM >}}
 
-视频基本上将代码的核心模块全部手敲了一遍，核心内容解释的较为清晰，但存在如下问题。
+视频基本上将代码的核心模块全部手敲了一遍，核心内容解释的较为清晰，但存在如下问题：
 
-- 视频中run方法中并未设置`cmd.SysProcAttr.Unshareflags=syscall.CLONE_NEWNS`，在实践中发现，未指定此flag会导致容器内的挂载会泄露到宿主机上，这与挂载传播相关，笔者系统上默认使用**shared**传播类型，猜测Liz的系统默认使用**private**类型传播。
+- 视频中run方法中并未设置`cmd.SysProcAttr.Unshareflags=syscall.CLONE_NEWNS`，在实践中发现，未指定此flag会导致容器内的挂载会泄露到宿主机上，这与挂载传播相关，笔者系统上默认使用**shared**传播类型，猜测Liz的系统默认使用**private**传播类型。
 
 - 视频中在Liz退出容器时会触发panic，报错内容为**No such file or directory**，探索后发现是在第59行卸载thing时出错，看一下syscall关系Mount和Unmount的api：
 
@@ -145,7 +145,7 @@ func must(err error) {
 
 ### 准备ubuntufs
 
-由于ubuntufs是container的文件系统，并为其提供必要的指令，因此实践前需要准备ubuntufs。笔者采用从ubuntu container中将整个文件系统拷贝出来。
+实现所需的ubuntufs是container的rootfs，为其提供必要的指令。笔者采用从ubuntu container中将整个文件系统拷贝出来。
 
 ```shell
 docker run -it --rm ubuntu:21.04
@@ -314,7 +314,7 @@ pivot_root核心思想是将root mount更改为**new_root**，并且原root moun
         must(os.Chdir("/"))
 ```
 - 为满足第二条限制，`new_root`以bind mount形式脱离current root filesystem。
-- 由于存在process使用原root mount下的文件，因此无法直接unmount掉`put_old`。这里使用**lazy unmount**（通过**syscall.MNT_DETACH** flag）的方式卸载掉。Lazy unmount使新的进程看不到此挂载点（隐藏掉），并且当使用此mount的进程全部退出后将其真正卸载掉。
+- 由于存在process使用原root mount下的文件，因此无法直接unmount掉`put_old`。这里使用**lazy unmount**（通过**syscall.MNT_DETACH** flag）的方式卸载掉。Lazy unmount使新的进程看不到此挂载点（隐藏掉），并且当接入此mount的进程全部退出后将其真正卸载掉。
 
 {{< admonition note >}}
 **上述扩展的完整代码参考[这里](https://github.com/raygecao/containers-from-scratch/pull/1/files)。**
@@ -325,13 +325,13 @@ pivot_root核心思想是将root mount更改为**new_root**，并且原root moun
 
 ### 挂载传播
 
-Mount namespace有时会因提供太强的隔离性导致便捷性降低的问题，比如将一个新磁盘加载到一个光驱驱动器中，当有多个mount namespace时，需要将该磁盘挂载到每个namespace中。为了只使用一次挂载命令就可以将磁盘挂载到所有的命名空间中，Linux 从2.6.15起引入了**共享子树特性**。即**允许在namespace之间自动、可控地传播挂载和卸载事件**。
+Mount namespace有时会因提供太强的隔离性导致便捷性降低的问题，比如将一个新磁盘加载到一个光驱驱动器中，当有多个mount namespace时，需要将该磁盘挂载到每个namespace中。为了**只使用一次挂载命令就可以将磁盘挂载到所有的mount namespace**，Linux 从2.6.15起引入了**共享子树特性（Shared Subtrees）**，即**允许在namespace之间自动、可控地传播挂载和卸载事件**。
 
 此特性下，每个挂载点都有一个**传播类型**，此类型决定在此挂载点下创建/删除的挂载点能否传播到其他挂载点下，传播类型有如下四种：
 
 | 传播类型        | 作用                                                         |
 | --------------- | ------------------------------------------------------------ |
-| `MS_SHARED`     | 该挂载点下同一对等组中的挂载点**双向地共享**挂载和卸载事件   |
+| `MS_SHARED`     | 该挂载点下同一对等组中的挂载点**双向共享**挂载和卸载事件   |
 | `MS_SLAVE`      | 该挂载点下同一对等组中的主挂载点可以将挂载或卸载事件**单向传播**到从属挂载点 |
 | `MS_PRIVATE`    | 挂载点**不会将事件传播给任何对等方**，同时也不会接收事件     |
 | `MS_UNBINDABLE` | 在`MS_PRIVATE`基础上**不能作为绑定挂载操作的源**             |
@@ -373,7 +373,7 @@ $ cat /proc/self/mountinfo | grep ubuntufs
 - 如代码展示那样，加入`Unshareflags=syscall.CLONE_NEWNS` 参考 [issue-38471](https://go-review.googlesource.com/c/go/+/38471)。
 - 指定根挂载为`MS_PRIVATE`类型，如`must(syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""))`。
 
-## Unshare
+### Unshare
 
 Linux `unshare` 指令可以新建namespace，并在namespace中运行程序，支持的命名空间类型有：
 
@@ -394,7 +394,7 @@ $ sudo unshare --fork --pid --mount-proc --uts /bin/bash
 - `--mount-proc`挂载了proc，并声明了mount namespace隔离。
 - `--uts`声明了uts namespace隔离。
 
-### 参考文献
+## 参考文献
 - [containers-from-scratch](https://github.com/lizrice/containers-from-scratch)
 - [挂载命名空间和共享子树](https://cloud.tencent.com/developer/article/1531989)
 - [unshare(1)](https://man7.org/linux/man-pages/man1/unshare.1.html)
