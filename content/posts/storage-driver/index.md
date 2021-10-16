@@ -13,7 +13,7 @@ resources:
   src: "featured-image.png"
 
 tags: ["container"]
-categories: ["探索与实践"]
+categories: ["探索与实战"]
 
 
 toc:
@@ -51,12 +51,12 @@ Docker 通过storage driver来**存储镜像层，并且将数据存储到容器
 
 - Aufs是一个联合文件系统，其采用**union mount**将linux系统上的多个目录**堆叠**成一个目录，一个目录代表一个branch（在docker术语中对应为layer）。
 
-  {{< image src="aufs-layers.png" caption="Aufs layer组织形式" width=800 height=400 >}}
+  {{< image src="aufs-layers.png" caption="aufs layer组织形式" width=800 height=400 >}}
 
 - **存储结构**
 
   - `diff/`：每一层的内容，每层以一个独立的子目录存储。
-  - `layers/`：存放layers的元信息以标识镜像layer如何堆叠，每层以一个文件表示。
+  - `layers/`：存放layers的元信息以标识镜像层如何堆叠，每层以一个文件表示。
   - `mnt/`：挂载点，每层一个，用于向容器组装/挂载联合文件系统。
 
 - **容器读文件**
@@ -71,8 +71,9 @@ Docker 通过storage driver来**存储镜像层，并且将数据存储到容器
   - 删除文件：在容器层创建一个`whiteout file`，避免向下层继续寻找。
   - 删除目录：在容器层创建一个`opaque file`（实测依然是whiteout file）。
 - **Aufs性能**
-  - 对容器密集型友好，因其能有效利用运行中的容器image，使得容器启动更迅速，减少磁盘空间使用。
+  - 对容器密集型场景友好，因其能有效利用运行中的容器image，使得容器启动更迅速，减少磁盘空间使用。
   - 能有效使用page cache。
+  - 定位文件开销大，需要沿着layer stack逐层定位。  
   - 首次写操作开销大，尤其是文件在镜像层存在时，需要copy-up至容器层。由于**aufs底层存储是文件级别而非块级别**，对于文件的修改需要将整个文件复制到容器层。因此文件越大，写性能越差。
 - **最佳实践**
   - 使用ssd盘，速度远高于旋转式磁盘。
@@ -192,7 +193,7 @@ $ find  /var/lib/docker/aufs -name *zegrep*
 
 ### Overlay2
 
-- Overlay2每一层均以一个`patch`的形式表示，基于内核overlayFS的Multiple lower layers特性实现，不再需要硬链接，**lowerdir是将镜像层所有的layer overlay起来组成**。
+- Overlay2 driver每一层均以一个`patch`的形式表示，基于内核overlayFS的multiple lower layers特性实现，不再需要硬链接，**lowerdir是将镜像层所有的layer overlay起来组成**。
 
   容器层挂载信息：
 
@@ -205,10 +206,10 @@ $ find  /var/lib/docker/aufs -name *zegrep*
 
 {{< mermaid >}}
 graph BT;
-l1[Layer1: <font color=red>a,b,c</font>]
-l2[Layer2: <font color=red>B,d</font>]
-l3[Layer3: <font color=red>C,e</font>]
-ld[Lowerdir: <font color=red>a,B,C,d,e</font>]
+l1[Layer1: a,b,c]
+l2[Layer2: B,d]
+l3[Layer3: C,e]
+ld[Lowerdir: a,B,C,d,e]
 l1 -- add B,d --> l2
 l2 -- add C,e --> l3
 l3 -. overlay .-> ld
@@ -221,7 +222,7 @@ l3 -. overlay .-> ld
   - `lower`：当前层的父layers，按层序排列，除最底层外有此文件。
   - `work/`：overlayFS内部使用的文件，除最底层外有此目录。
   - `merged/`：其自身及其父layer的联合目录结构，只有容器层有此目录。
-  - `l/`：短id的符号链接。
+  - `l/`：此目录存放短id的符号链接。
 
   ```shell
   # tree -L 2 /var/lib/docker/overlay2
@@ -309,7 +310,7 @@ l3 -. overlay .-> ld
 
 ### Overlay
 
-- Overlay中每一层都构筑成完整的镜像，即每一层都是从最底层到当前层overlay出的完整结构，下一层的文件以**硬链接**的方式出现在它的上一层，**lowerdir只由镜像层的top layer组成**。
+- Overlay driver每一层都构筑成完整的镜像，即每一层都是从最底层到当前层overlay出的完整结构，下一层的文件以**硬链接**的方式出现在它的上一层，**lowerdir只由镜像层的top layer组成**。
 
   容器层挂载信息：
 
@@ -330,10 +331,10 @@ l3 -. overlay .-> ld
 
   {{< mermaid >}}
   graph BT;
-  l1[Layer1: <font color=red>a,b,c</font>]
-  l2[Layer2: <font color=red>a,B,c,d</font>]
-  l3[Layer3: <font color=red>a,B,C,d,e</font>]
-  ld[Lowerdir: <font color=red>a,B,C,d,e</font>]
+  l1[Layer1: a,b,c]
+  l2[Layer2: a,B,c,d]
+  l3[Layer3: a,B,C,d,e]
+  ld[Lowerdir: a,B,C,d,e]
   l1 -- add B,d --> l2
   l2 -- add C,e --> l3
   l3 -. overlay .-> ld
@@ -391,7 +392,7 @@ l3 -. overlay .-> ld
       └── work
   ```
   
-  upper中除了`mtab`是指向`/proc/mounts`的软链接之外，其他都是空的普通文件。这些文件都是Linux runtime必须的文件，如果缺少会导致某些程序或库出现异常。**init layer主要是用于占坑，避免系统因缺少特殊文件而崩溃，具体内容后续进行bind mount**。
+  upper dir中除了`mtab`是指向`/proc/mounts`的软链接之外，其他都是空的普通文件。这些文件都是Linux runtime必须的文件，如果缺少会导致某些程序或库出现异常。**init layer主要是用于占坑，避免系统因缺少特殊文件而崩溃，具体内容后续进行bind mount**。
   
   由于init layer很薄并且只读，上述讨论将其予以忽略，其本身可以帮助我们快速定位到容器层的id。
   
@@ -400,11 +401,11 @@ l3 -. overlay .-> ld
 ## Aufs, overlay与overlay2比较
 
 - **相同点**
-  - 划分容器层与镜像层，镜像层只读可以复用；容器层可写，遵循CoW机制。
-  - 底层基于**file-leve**l，而非block-level，可有效利用内存，但写操作开销大，CoW效率低。当文件很大时，对其修改需要全部copy up到容器层，即便是仅仅进行了很小的修改。
+  - 划分容器层与镜像层，镜像层只读可以复用；容器层可写，采用CoW机制。
+  - 底层基于**file-level**，而非block-level，可有效利用内存，但写操作开销大，CoW效率低。当文件很大时，对其修改需要全部copy-up到容器层，即便是仅仅进行了很小的修改。
 - **不同点**
   - Aufs driver是按照layer stack组织镜像层的，即在定位文件时需要沿着layer stack一层一层地去定位。因此其性能相较于overlayFS差，尤其是镜像层数比较深时。
-  - Overlay driver每层都构筑完整的镜像目录结构，通过硬链接的形式复用底层镜像层的文件。在镜像层数较深时，定位文件及写容器层的性能要略好于overlay2。但是由于每层都是完整的镜像目录结构，**各级子目录会占用大量的Inode**，尤其当层数很深时inode易被耗尽。
+  - Overlay driver每层都构筑完整的镜像目录结构，通过硬链接的形式复用底层镜像层的文件。在镜像层数较深时，定位文件及写容器层的性能要略好于overlay2。但是由于每层都是完整的镜像目录结构，**各级子目录会占用大量的inode**，尤其当层数很深时，inode易被耗尽。
   - Overlay2 driver每层仅包含当前层的增量内容，通过overlay multiple lower layers形式构筑lowerdir，解决了overlay driver中消耗大量inode的问题，也是docker官方推荐的storage driver。
 
 ## 附录
@@ -420,3 +421,4 @@ $ dive ubuntu:16.04
 - [About storage drivers](https://docs.docker.com/storage/storagedriver/)
 - [Use the AUFS storage driver](https://docs.docker.com/storage/storagedriver/aufs-driver/)
 - [Use the OverlayFS storage driver](https://docs.docker.com/storage/storagedriver/overlayfs-driver/)
+- [DOCKER基础技术：AUFS](https://coolshell.cn/articles/17061.html)
