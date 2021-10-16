@@ -102,20 +102,40 @@ enableEmoji = true
   indexName = "blog"
   searchOnlyKey = "e313cef40f53bf69fe7e593c2369a811"
 
- [params.page.comment]
-      enable = true
-      [params.page.comment.valine]
-        enable = true
-        appId = "9CFga5qIsIai65AeVF4i0mAH-gzGzoHsz"
-        appKey = "WgXjMQASwreiUmnY5dHWWx0Y"
-        placeholder = "发表评论..."
-        avatar = "mp"
-        meta= ""
-        pageSize = 10
-        lang = ""
-        visitor = true
-        recordIP = true
-        highlight = true
-        enableQQ = false
-        serverURLs = ""
-        emoji = ""
+[params.page.comment]
+  enable = true
+  [params.page.comment.valine]
+    enable = true
+    appId = "9CFga5qIsIai65AeVF4i0mAH-gzGzoHsz"
+    appKey = "WgXjMQASwreiUmnY5dHWWx0Y"
+    placeholder = "发表评论..."
+    avatar = "mp"
+    meta= ""
+    pageSize = 10
+    lang = ""
+    visitor = true
+    recordIP = true
+    highlight = true
+    enableQQ = false
+    serverURLs = ""
+    emoji = ""
+
+[params.home.profile]
+  enable = true
+  # Gravatar 邮箱，用于优先在主页显示的头像
+  gravatarEmail = ""
+  # 主页显示头像的 URL
+  avatarURL = "/images/avatar.png"
+  # 主页显示的网站标题 (支持 HTML 格式)
+  title = ""
+  # 主页显示的网站副标题
+  subtitle = "勤学之途，贵在拾遗"
+  # 是否为副标题显示打字机动画
+  typeit = true
+  # 是否显示社交账号
+  social = true
+  # 免责声明 (支持 HTML 格式)
+  disclaimer = ""
+[params.social]
+  GitHub = "raygecao"
+  Email = "raygecao@gmail.com"
