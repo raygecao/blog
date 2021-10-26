@@ -33,7 +33,7 @@ license: ""
 显然，在网络受限的环境下，应用相关的所有资源都只能通过人肉搬运。下面的模式是私有化交付场景下常见的模式。
 
 {{< mermaid >}}
-graph LR;
+graph TB;
 home[公司内发布平台]
 registry[公网发布中心]
 offline[离线存储介质]
@@ -101,7 +101,7 @@ scenio--部署-->scenio
 
 - 下载应用包耗时较长。
 - 应用包占用的存储空间较大，并且应用包的跨网离线拷贝耗时较长。
-- 现场环境加载应用包并上传耗时较长。
+- 现场环境加载应用包耗时较长。
 
 {{< admonition info "交付效率" >}}
 
@@ -148,7 +148,7 @@ end
   - 与Docker Image Format Spec强绑定，底层调用moby sdk，无法支持通用的artifacts。
 
 - [helm registry](https://github.com/helm/helm/tree/main/internal/experimental/registry)：chart 支持基于OCI registry的发布。
-  - local cache以OCI [image-layout](https://github.com/opencontainers/image-spec/blob/main/image-layout.md)结构组织，content addressabe & location addressable。
+  - local cache以OCI [image-layout](https://github.com/opencontainers/image-spec/blob/main/image-layout.md)结构组织，content addressable & location addressable。
   - 与registry的交互必须依赖于local cache。
   - 同样仅支持两层镜像结构
 - [containered](https://github.com/containerd/containerd) 一个容器运行时的标准，其中`images`pkg包含对OCI image format的处理，`remotes`pkg包含与registry交互的底层sdk。
@@ -309,7 +309,7 @@ $ cb bundle nginx-bundle.yaml # 打包nginx-app
 ### 下载bundle
 
 ```shell
-# 将niginx-app bundle下载到nginx-app目录下
+# 将nginx-app bundle下载到nginx-app目录下
 $ cb pack myregistry:5000/nginx-app:v1.0.0 -o nginx-app 
 
 # 验证nginx-app中的结构符合OCI Image Layer Spec

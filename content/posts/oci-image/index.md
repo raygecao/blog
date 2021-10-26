@@ -123,11 +123,11 @@ Manifest用于定位镜像内容，可以认为是一个镜像的实际入口，
 
 | 属性                | 类型                | 作用                                                         |
 | ------------------- | ------------------- | ------------------------------------------------------------ |
-| **`schemaVersion`** | `int`               | 指定manifest schema，为确保与旧版本docker兼容，此Spec下固定值为2 |
-| **`mediaType`**     | `string`            | 内容的类型                                                   |
-| **`config`**        | `descriptor`        | 与容器运行时相关的配置信息                                   |
-| **`layers`**        | `[]descriptor`      | 用于构建镜像内文件系统布局，其中layers[0]描述base layer      |
-| **`annotations`**   | `map[string]string` | 携带额外信息的键值对集合                                     |
+| `schemaVersion` | `int`               | 指定manifest schema，为确保与旧版本docker兼容，此Spec下固定值为2 |
+| `mediaType`     | `string`            | 内容的类型                                                   |
+| `config`        | `descriptor`        | 与容器运行时相关的配置信息                                   |
+| `layers`        | `[]descriptor`      | 用于构建镜像内文件系统布局，其中layers[0]描述base layer      |
+| `annotations`   | `map[string]string` | 携带额外信息的键值对集合                                     |
 
 ### 实践探索
 
@@ -169,10 +169,10 @@ Index又被称为fat manifest，manifest可以视为layer的索引，而index是
 
 | 属性                | 类型                | 作用                                                         |
 | ------------------- | ------------------- | ------------------------------------------------------------ |
-| **`schemaVersion`** | `int`               | 指定manifest schema，为确保与旧版本docker兼容，此spec下固定值为2 |
-| **`mediaType`**     | `string`            | 内容的类型                                                   |
-| **`manifests`**     | `[]object`          | 描述运行时要求的最小集，主要是**操作系统/架构**等平台相关，列表中有多个manifest，提供平台相关的属性用以进行filter。 |
-| **`annotations`**   | `map[string]string` | 携带额外信息的键值对集合                                     |
+| `schemaVersion` | `int`               | 指定manifest schema，为确保与旧版本docker兼容，此spec下固定值为2 |
+| `mediaType`     | `string`            | 内容的类型                                                   |
+| `manifests`     | `[]object`          | 描述运行时要求的最小集，主要是**操作系统/架构**等平台相关，列表中有多个manifest，提供平台相关的属性用以进行filter。 |
+| `annotations`   | `map[string]string` | 携带额外信息的键值对集合                                     |
 
 ### 实践探索
 
@@ -247,7 +247,7 @@ Index又被称为fat manifest，manifest可以视为layer的索引，而index是
 
 ## Filesystem layer
 
-Layer是镜像内文件系统的组成成分，每一层都都再描述一系列文件系统变化。
+Layer是镜像内文件系统的组成成分，每一层都在描述一系列文件系统变化。
 
 ### MediaType
 
@@ -276,7 +276,7 @@ lrwxrwxrwx 0/0               0 2021-07-24 01:50 etc/alternatives/nawk -> /usr/bi
 
 {{< admonition tip >}}
 
-可以通过`... | awk '{print $6}' | awk -F/ '{print $1}'| sort | uniq` 对上述输出结果进行聚合获取第一层目录，结果可以看到就是标准的ubuntu文件系统。
+可以通过`... | awk '{print $6}' | awk -F/ '{print $1}'| sort | uniq` 对上述输出结果进行聚合获取第一层目录，结果可以看到就是标准的ubuntu root filesystem。
 
 {{< /admonition >}}
 
@@ -442,10 +442,10 @@ ccc
 
 ### 示例
 
-比较完善的示例是[helm对OCI支持](https://helm.sh/docs/topics/registries/)，chart的发布支持OCI规范，实现上依赖于本地的OCI Image Layout与OCI registry做交互完成chart的发布。
+比较完善的示例是[helm对OCI支持](https://helm.sh/docs/topics/registries/)，chart的发布支持OCI规范，实现上依赖于本地的OCI Image Layout与OCI registry交互完成chart的发布。
 
 {{< mermaid >}}
-graph LR
+graph TB;
 chart[helm chart]--save-->local[OCI Image Layout]
 local --push-->registry[OCI registry]
 registry--pull-->local
