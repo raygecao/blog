@@ -80,29 +80,7 @@ license: ""
 
 目前常用的对称加密算法是**DES，3DES，AES**等。 下图是一个简单的DES示例
 
-{{< mermaid >}}
-graph LR
-msg1(明文='raygecao')
-msg2(明文='raygecao')
-key((key='123'))
-dot1((加密))
-dot2((解密))
-encoded(密文='U2FsdGVkX182w10mU97Gokg3xmmnXip1mmCuJPRVNdo=')
-msg1-->dot1
-dot1-->encoded
-encoded-->dot2
-dot2-->msg2
-key-->dot1
-key-->dot2
-
-style msg1 fill:yellow
-style msg2 fill:yellow
-style encoded fill:yellow
-style key fill:red
-
-{{< /mermaid >}}
-
-
+{{< image src="des.png" caption="对称加密算法示意" width=600 height=200 >}}
 
 ### 非对称加密
 
@@ -120,58 +98,12 @@ style key fill:red
 
 原始信息的大小直接影响到签名的性能，通常我们需要**对原始信息进行hash获取摘要，并对摘要进行签名**。这要求hash算法是不可逆转的，即无法根据摘要推算出私钥。同时，好的hash算法能保证不同的信息输出的结果也都不相同，即在计算上同一结果只能对应一种原始信息。目前比较流行的hash算法是md5，其将原始信息散列成固定128位的结果。
 
-{{< mermaid >}}
-graph TB
-a((A))
-b((B))
-msg("报文:#!%&$#@!$#@")
-msg2("报文:#!%&$#@!$#@")
-sign(数字签名)
-sign2(数字签名)
-hash("摘要:ABCD")
-hash2("摘要:ABCD")
-hash3("解出摘要")
-pub("A的公钥")
-pri("A的私钥")
-all("发送内容：报文+数字签名")
-style sign fill:red
-style sign2 fill:red
-style pub fill:yellow
-style pri fill:yellow
-subgraph 签名端
-a-->msg
-msg--hash-->hash
-a-->pri
-pri --加签-->sign
-hash -->sign
-end
-subgraph 网络
-sign -.->all
-msg -.->all
-end
-all -.-> sign2
-all -.-> msg2
-subgraph 验签端
-sign2-->hash3
-pub--解签-->hash3
-msg2--hash-->hash2
-hash2 ==验签=== hash3
-b-->pub
-end
-{{< /mermaid >}}
+{{< image src="digital-sign.png" caption="数字签名示意" width=600 height=200 >}}
 
 有了非对称加密，信息的传递就绝对安全了吗？也不是，上述过程中最大的问题仍旧是...**公钥的传递**。不对呀，之前**不是说了公钥是公开的吗，为什么公钥的传递还会引发安全性呢**？问题的本质不在于传递公钥内容的安全性，而在于**公钥的所有者是谁**。换句话说，小明要和小丽通信，小明如何知道传递过来的公钥是小丽的呢？如果小丽传递过来的公钥被小三拦截，并且将小三的公钥传递给了小明，那小明原本要发给小丽的情话不就被小三拦截并破译了？小三便可以窃听或者篡改小明与小丽的通信。这就是所谓的**中间人攻击**。
 
-{{< mermaid >}}
-graph LR
-ming(小明)
-li(小丽)
-san(小三)
-li --1.小丽的公钥被小三拦截-->san
-san --2.小三将自己的公钥传递给小明-->ming
-ming --3.发送'我们结婚吧'-->san
-san --4.发送'我们分手吧'-->li
-{{< /mermaid >}}
+{{< image src="median-attack.png" caption="中间人攻击示例" width=600 height=200 >}}
+
 
 那么如何避免中间人攻击呢？这就需要引出**第三方认证**了，即通过权威机构证明这个公钥是小丽的。
 

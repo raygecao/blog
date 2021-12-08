@@ -203,17 +203,9 @@ $ find  /var/lib/docker/aufs -name *zegrep*
   ```
 
   层间组织关系简单示意：
+  
+  {{< image src="overlay2-driver.png" caption="overlay2 driver层堆叠示意" width=800 height=400 >}}
 
-{{< mermaid >}}
-graph BT;
-l1[Layer1: a,b,c]
-l2[Layer2: B,d]
-l3[Layer3: C,e]
-ld[Lowerdir: a,B,C,d,e]
-l1 -- add B,d --> l2
-l2 -- add C,e --> l3
-l3 -. overlay .-> ld
-{{< /mermaid >}}
 
 - **存储结构**
 
@@ -329,16 +321,7 @@ l3 -. overlay .-> ld
 
   层间组织关系简单示意：
 
-  {{< mermaid >}}
-  graph BT;
-  l1[Layer1: a,b,c]
-  l2[Layer2: a,B,c,d]
-  l3[Layer3: a,B,C,d,e]
-  ld[Lowerdir: a,B,C,d,e]
-  l1 -- add B,d --> l2
-  l2 -- add C,e --> l3
-  l3 -. overlay .-> ld
-  {{< /mermaid >}}
+  {{< image src="overlay-driver.png" caption="overlay driver层堆叠示意" width=800 height=400 >}}
 
 - **存储结构**
 

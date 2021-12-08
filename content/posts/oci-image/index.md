@@ -444,13 +444,7 @@ ccc
 
 比较完善的示例是[helm对OCI支持](https://helm.sh/docs/topics/registries/)，chart的发布支持OCI规范，实现上依赖于本地的OCI Image Layout与OCI registry交互完成chart的发布。
 
-{{< mermaid >}}
-graph TB;
-chart[helm chart]--save-->local[OCI Image Layout]
-local --push-->registry[OCI registry]
-registry--pull-->local
-local --export-->chart
-{{< /mermaid >}}
+{{< image src="helm-oci.png" caption="helm支持OCI的交互方式" width=200 height=100 >}}
 
 使用`save` cmd保存两个版本的chart。
 

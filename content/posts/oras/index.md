@@ -32,17 +32,7 @@ license: ""
 
 显然，在网络受限的环境下，应用相关的所有资源都只能通过人肉搬运。下面的模式是私有化交付场景下常见的模式。
 
-{{< mermaid >}}
-graph TB;
-home[公司内发布平台]
-registry[公网发布中心]
-offline[离线存储介质]
-scenio[私有化交付现场]
-home --打包并发布--> registry
-registry --下载应用包-->offline
-offline --人肉搬运并上传-->scenio
-scenio--部署-->scenio
-{{< /mermaid >}}
+{{< image src="old-delivery.png" caption="传统私有化交付方案" width=600 height=200 >}}
 
 ## 一个应用部署需要啥？
 
@@ -111,24 +101,8 @@ scenio--部署-->scenio
 
 初次交付时，这一问题无法避免，因为这时现场是个空的registry，需要mirror应用所需的所有artifacts。但是如果现场因新需求或bugfix等原因需要升级时，就不需要mirror另一个版本的全部content了。我们可以对这两个版本的bundle进行diff，生成一个补丁包来承载**新版本存在，但老版本不存在的blob集合**。如下图所示，app从v1.0.0升级到v1.0.1仅需要将`M2`与`L4`打到补丁包里即可，即其复用了就版本的`L1`与`L2`两个blob。
 
-{{< mermaid >}}
-graph TB;
-m1["app@v1.0.0<br>[M1]"]
-m2["app@v1.0.1<br>[M2]"]
-l1((L1))
-l2((L2))
-l3((L3))
-l4((L4))
-m1 --> l1
-m1 --> l2
-m1 --> l3
-m2 -.-> l1
-m2 -.-> l2
+{{< image src="patch.png" caption="app v1.0.1基于v1.0.0版本的patch" width=600 height=200 >}}
 
-subgraph patch-v1.0.1
-m2 -.-> l4
-end
-{{< /mermaid >}}
 
 增量发布对于小版本bugfix效率很高，改动越小，可以复用的layer越多，补丁包就越小，交付效率也就越高。
 
@@ -163,35 +137,9 @@ end
 
 {{< image src="bundle-struct.png" caption="cnab's bundle format in OCI registry" width=500 height=200 >}}
 
-简化一下组织结构，本质上就是一颗多叉树。
+简化一下组织结构，本质上就是一棵多叉树。
 
-{{< mermaid >}}
-graph TB;
-subgraph OCI image index
-bundle
-pi[multi-platform index]
-end
-subgraph OCI image manifest
-image
-ap[应用包]
-dp[数据包]
-end
-subgraph OCI layer
-il[rootfs.diff]
-chart
-data
-end
-
-bundle --> pi
-bundle --> ap
-bundle --> dp
-
-pi --> image
-
-image --> il
-ap --> chart
-dp --> data
-{{< /mermaid >}}
+{{< image src="bundle-format.png" caption="bundle组织结构" width=600 height=200 >}}
 
 ## 实践探索
 
