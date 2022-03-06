@@ -12,8 +12,8 @@ resources:
 - name: "featured-image"
   src: "featured-image.png"
 
-tags: [网络]
-categories: [整理与总结]
+tags: ["网络"]
+categories: ["整理与总结"]
 
 
 toc:

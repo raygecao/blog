@@ -10,7 +10,7 @@ authorLink: ""
 description: ""
 
 tags: ["思辨"]
-categories: ["Anecdotes"]
+categories: ["anecdotes"]
 
 resources:
 - name: "featured-image"

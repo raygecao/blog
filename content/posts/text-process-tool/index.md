@@ -13,7 +13,7 @@ resources:
   src: "featured-image.png"
 
 tags: ["linux"]
-categories: ["总结与整理"]
+categories: ["整理与总结"]
 
 
 toc:

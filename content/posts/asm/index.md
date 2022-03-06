@@ -13,7 +13,7 @@ resources:
   src: "featured-image.png"
 
 tags: ["汇编"]
-categories: ["读书笔记"]
+categories: ["整理与总结"]
 
 
 toc:

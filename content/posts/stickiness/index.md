@@ -10,7 +10,7 @@ authorLink: ""
 description: "一本让创意有粘性的好书"
 
 tags: ["思辨"]
-categories: ["读书笔记"]
+categories: ["anecdotes"]
 resources:
 - name: "featured-image"
   src: "featured-image.jpg"
