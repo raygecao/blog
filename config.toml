@@ -52,7 +52,7 @@ enableEmoji = true
   enable = true
   hugo = false
   copyright = false
-
+  icp = "<a href=\"http://beian.miit.gov.cn/\">京ICP备2021034884号-1</a>"
 
 # Hugo 解析文档的配置
 [markup]
