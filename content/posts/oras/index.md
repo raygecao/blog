@@ -145,7 +145,7 @@ license: ""
 
 我们以一个具体的例子来简化一下我们要解决的问题：我**们如何使用helm在私有化k8s集群中部署起来一个nginx服务**。我们要做的是将helm chart与image发布并打包，在现场环境中导入这些artifacts。
 
-结合oras, crane与containerd sdk开发一个小工具**cb**，提供如下核心功能
+结合oras, crane与containerd sdk开发一个小工具[cb](https://github.com/raygecao/oci-bundle/releases/tag/v0.0.1)，提供如下核心功能
 
 | cmd      | 作用                               | 实现要点                                                     |
 | -------- | ---------------------------------- | ------------------------------------------------------------ |
