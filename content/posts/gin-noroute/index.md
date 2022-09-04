@@ -47,12 +47,12 @@ func main() {
 
 ## 需求
 
-现需要为此服务新增openapi路由，并且同样具有/v1 prefix，路由表如下所示
+现需要为此服务新增openapi路由，并且同样具有/v1 prefix，路由表如下所示：
 {{< image src="tree.png" caption="route tree" width=600 height=200 >}}
 
 ## 实现方案
 
-最初的想法是在最开头加上相应的route
+最初的想法是在最开头加上相应的route。
 
 ```go
 // ...
@@ -61,13 +61,13 @@ router.Any("/v1/*path", gin.WrapH(mux))
 //...
 ```
 
-运行时报如下错误
+运行时报如下错误：
 
 ```shell
 panic: catch-all conflicts with existing handle for the path segment root in path '/v1/*path'
 ```
 
-gin的router在匹配路由时并不像三层路由表按定义的顺序一层一层匹配，而注册一组互斥的(method, pattern)用以全局匹配。而上述两个pattern是存在包含关系的，因此报错path conflict。由于mux内的二级路由比较多样，因此我们希望通过默认路由对mux进行路由改造。gin提供了`NoRoute`方法去处理匹配不上的路由，这正好可以满足此需求
+gin的router在匹配路由时并不像三层路由表按定义的顺序一层一层匹配，而注册一组互斥的(method, pattern)用以全局匹配。而上述两个pattern是存在包含关系的，因此报错path conflict。由于mux内的二级路由比较多样，因此我们希望通过默认路由对mux进行路由改造。gin提供了`NoRoute`方法去处理匹配不上的路由，这正好可以满足此需求。
 
 ```go
 // ...
@@ -96,7 +96,7 @@ $ curl -v localhost:3001/v1/artifacts
 
 ## 问题排查
 
-上述请求返回了正确结果，因此可以确定其已经被artifact handler的逻辑正确处理，显然status code被gin置成了`404`。`NoRoute`的doc如此描述
+上述请求返回了正确结果，因此可以确定其已经被artifact handler的逻辑正确处理，显然status code被gin置成了`404`。`NoRoute`的doc如此描述：
 
 ```go
 // NoRoute adds handlers for NoRoute. It return a 404 code by default.
@@ -110,9 +110,9 @@ func (engine *Engine) NoRoute(handlers ...HandlerFunc) {
 
 为了更深入探索此问题，做了如下三个实验
 
-- Case1：将`/v1/artifacts` 返回结果改造成internal error，观察status code
-- Case2：给mux添加一个自定义路由`/v1/artifacts/success`（裸handler），总是返回`200`
-- Case3：给mux添加一个自定义路由`/v1/artifacts/fail`，总是返回`500`
+- Case1：将`/v1/artifacts` 返回结果改造成internal error，观察status code。
+- Case2：给mux添加一个自定义路由`/v1/artifacts/success`（裸handler），总是返回`200`。
+- Case3：给mux添加一个自定义路由`/v1/artifacts/fail`，总是返回`500`。
 
 ```go
 // case1
@@ -132,7 +132,7 @@ func (m *Manager) ListArtifacts(ctx context.Context, request *v1.ListArtifactsRe
 	})
 ```
 
-上述请求的resp status code都是符合预期的
+上述请求的resp status code都是符合预期的。
 
 ```shell
 # case1
@@ -171,7 +171,7 @@ $ curl -v localhost:3001/v1/artifacts/fail
 
 ### gin侧
 
-- 查看`NoRoute`配置的handler
+- 查看`NoRoute`配置的handler。
 
   ```go
   func (engine *Engine) rebuild404Handlers() {
@@ -179,7 +179,7 @@ $ curl -v localhost:3001/v1/artifacts/fail
   }
   ```
 
-- 从名字来看，`allNoRoute`像是当匹配不到路由时会执行的handler，我们搜一下其引用位置
+- 从名字来看，`allNoRoute`像是当匹配不到路由时会执行的handler，我们搜一下其引用位置。
 
   ```go
   func (engine *Engine) handleHTTPRequest(c *Context) {
@@ -214,7 +214,7 @@ $ curl -v localhost:3001/v1/artifacts/fail
   )
   ```
 
-- `ServeHTTP`调用`handleHTTPRequest`，并且将默认status code设置为`200`，路由匹配失败会进入到`serveError`函数里
+- `ServeHTTP`调用`handleHTTPRequest`，并且将默认status code设置为`200`，路由匹配失败会进入到`serveError`函数里。
 
   ```go
   func serveError(c *Context, code int, defaultMessage []byte) {
@@ -241,11 +241,11 @@ $ curl -v localhost:3001/v1/artifacts/fail
   }
   ```
 
-- 很明显这里将默认status code改成`404`，并去执行相应的handler，正常情况下handler会覆写resp里的status code，而grpc ServiceHandler看上去在执行成功后没有写`200`
+- 很明显这里将默认status code改成`404`，并去执行相应的handler，正常情况下handler会覆写resp里的status code，而grpc ServiceHandler看上去在执行成功后没有写`200`。
 
 ### Grpc-gateway侧
 
-- 查看注册handler的逻辑，可以看到当handler返回错误后，会去调用`runtime.HTTPError`，而正确处理时调用`runtime.ForwardResponseMessage`
+- 查看注册handler的逻辑，可以看到当handler返回错误后，会去调用`runtime.HTTPError`，而正确处理时调用`runtime.ForwardResponseMessage`。
 
   ```go
   func RegisterArtifactServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ArtifactServiceServer) error {
@@ -331,7 +331,7 @@ $ curl -v localhost:3001/v1/artifacts/fail
   }
   ```
 
-- 这时需要考虑是否有地方可以通过options来做一些trick，从上述代码我们可以看到`handleForwardResponseOptions`传入了resp，猜测这里面有文章
+- 这时需要考虑是否有地方可以通过options来做一些trick，从上述代码我们可以看到`handleForwardResponseOptions`传入了resp，猜测这里面有文章。
 
   ```go
   func handleForwardResponseOptions(ctx context.Context, w http.ResponseWriter, resp proto.Message, opts []func(context.Context, http.ResponseWriter, proto.Message) error) error {
@@ -350,11 +350,11 @@ $ curl -v localhost:3001/v1/artifacts/fail
   }
   ```
 
-- 因为执行到`ForwardResponseMessage`一定意味着service handler执行成功了，显然可以通过`ForwardResoponseOptions`将200写到resp status code来解决此问题
+- 因为执行到`ForwardResponseMessage`一定意味着service handler执行成功了，显然可以通过`ForwardResoponseOptions`将200写到resp status code来解决此问题。
 
 ## 解决方法
 
-创建mux时指定`WithForwardResponseOption`向resp中写入`200`status code
+创建mux时指定`WithForwardResponseOption`向resp中写入`200`status code。
 
 ```go
 	// ...
@@ -366,11 +366,13 @@ $ curl -v localhost:3001/v1/artifacts/fail
   // ... 
 ```
 
-测试一切正常
+测试一切正常。
 
 ## 后记
 
-有小伙伴指出在`http.ResposeWriter`接口中的`Write`方法里有个重要说明：**If WriteHeader has not yet been called, Write calls WriteHeader(http.StatusOK) before writing the data**。这表明在没有显式写状态码时，调用`Write`前会写个200
+### ResponseWriter标准
+
+有小伙伴指出在`http.ResposeWriter`接口中的`Write`方法里有个重要说明：**If WriteHeader has not yet been called, Write calls WriteHeader(http.StatusOK) before writing the data**。这表明在没有显式写状态码时，调用`Write`前会写个200。
 
 ```go
 // A ResponseWriter interface is used by an HTTP handler to
@@ -441,7 +443,7 @@ type ResponseWriter interface {
 }
 ```
 
-这看似与上述排查结论相悖。但进一步看，这个结构是个nterface，在interface内声明这个规则并不能强制约束实现方去如此做。恰好gin `Context`中的相关接口实现恰好打破了这个规则
+这看似与上述排查结论相悖。但进一步看，这个结构是个nterface，在interface内声明这个规则并不能强制约束实现方去如此做。恰好gin `Context`中的相关接口实现恰好打破了这个规则。
 
 ```go
 func (w *responseWriter) Write(data []byte) (n int, err error) {
@@ -472,3 +474,42 @@ func (w *responseWriter) WriteHeader(code int) {
 ```
 
 gin 对`Write`装饰了一层写内部状态码的行为，用以对默认状态码的支持。
+
+### 其他方案
+
+后续跟web经验丰富的同事互动了一下，学到了两种替代方案：
+
+- 方案一：预写默认状态码发生在router层，避免掀开引擎盖子。
+
+  ```go
+  	mux := newMux()
+  	r.NoRoute(gin.WrapF(func(writer http.ResponseWriter, request *http.Request) {
+  		writer.WriteHeader(200)
+  		mux.ServeHTTP(writer, request)
+  	}))
+  ```
+
+- 方案二：自定义转发规则，将部分路由从gin框架内提到外部。
+
+  ```go
+  	r := gin.Default()
+  
+  	r.GET("/v1/swagger/", func(c *gin.Context) {
+  		c.JSON(200, "swagger")
+  	})
+  
+  	mux := newMux()
+  	h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+  		path := request.URL.Path
+  		if strings.HasPrefix(path, "/v1") && !strings.HasPrefix(path, "/v1/swagger") {
+        // 匹配 v1/!swagger pattern的，由mux serve
+  			mux.ServeHTTP(writer, request)
+  		} else {
+        // 匹配 v1/swagger pattern的，由gin router serve
+  			r.ServeHTTP(writer, request)
+  		}
+  	})
+  
+  	server := httptest.NewServer(h)
+  	defer server.Close()
+  ```
