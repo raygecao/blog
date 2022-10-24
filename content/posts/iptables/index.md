@@ -48,7 +48,7 @@ Netfilter/Iptables是unix/linux自带的防火墙工具，netfilter是内核中*
   - **INPUT**：经由PREROUTING链的数据包发现目标地址为本机，会经由INPUT链进入本机，**入站过滤规则通常在此链配置**；
   - **FORWARD**：经由PREROUTING链的数据报发现目标地址不是本机，会经由FORWARD链进行转发，通常**网络防火墙会在此链配置**；
   - **OUTPUT**：从本机产生的数据包向外发送时会先经过OUTPUT链，通常**出站过滤规则在此链配置**。
-  - **POSTROUTING**：经由OUTPUT/FORWORD链中流出的数据包最终经路由后会到达POSTROUTING链，以从对应的接口流出，POSTROUTING为数据包流出的最后一站，SNAT通常在此链上配置；
+  - **POSTROUTING**：经由OUTPUT/FORWARD链中流出的数据包最终经路由后会到达POSTROUTING链，以从对应的接口流出，POSTROUTING为数据包流出的最后一站，**SNAT通常在此链上配置**；
 
   每条链上会有多个规则，按顺序匹配，符合规则的触发action，并停止后续的规则匹配。 
   
