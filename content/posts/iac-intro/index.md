@@ -78,7 +78,7 @@ IaC使得基础设施的构建与运维变得自动化，结合CI/CD/Pipeline可
 
 > With the rise of DevOps and SRE approaches, infrastructure management becomes codified, automatable, and software development best practices gain their place around infrastructure management too. On one hand, the daily tasks of classical operations people changed and are more similar to traditional software development. On the other hand, software engineers are more likely to control their whole DevOps lifecycle, including deployments and delivery.    —— gitlab
 
-> IaC makes the environment part of a software release, managed as part of the CI/CD pipeline —— auqa
+> IaC makes the environment part of a software release, managed as part of the CI/CD pipeline —— aqua
 
 
 
