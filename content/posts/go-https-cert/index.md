@@ -13,7 +13,7 @@ resources:
   src: "featured-image.png"
 
 tags: ["tls"]
-categories: ["探索与实践"]
+categories: ["探索与实战"]
 
 
 toc:
