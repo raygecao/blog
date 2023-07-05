@@ -1,6 +1,6 @@
 ---
 weight: 20
-title: "私有化交付下的应用打包方案"
+title: "私有化交付平台--打包篇"
 subtitle: ""
 date: 2021-08-26T20:58:05+08:00
 lastmod: 2021-08-26T20:58:05+08:00
@@ -12,8 +12,8 @@ resources:
 - name: "featured-image"
   src: "featured-image.png"
 
-tags: ["container"]
-categories: ["探索与实战"]
+tags: ["container", "platform"]
+categories: ["工作项目"]
 
 
 toc:
