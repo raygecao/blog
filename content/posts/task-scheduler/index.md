@@ -13,7 +13,7 @@ resources:
   src: "featured-image.jpg"
 
 tags: ["platform"]
-categories: ["工作记录"]
+categories: ["工作项目"]
 
 
 toc:

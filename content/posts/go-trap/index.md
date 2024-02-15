@@ -13,7 +13,7 @@ resources:
   src: "featured-image.jpg"
 
 tags: ["go"]
-categories: ["整理与总结"]
+categories: ["整理与总结", "踩坑记录"]
 
 
 toc:
