@@ -13,7 +13,7 @@ resources:
   src: "featured-image.png"
 
 tags: ["tools"]
-categories: ["探索与实战"]
+categories: ["工具党"]
 
 
 toc:
