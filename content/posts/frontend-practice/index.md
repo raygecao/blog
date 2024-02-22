@@ -12,8 +12,8 @@ resources:
 - name: "featured-image"
   src: "featured-image.png"
 
-tags: ["platform"]
-categories: ["工作项目", "前端"]
+tags: ["前端"]
+categories: ["工作项目"]
 
 
 toc:
